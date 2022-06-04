@@ -1,4 +1,3 @@
-//sdsds
 /*
 Copyright (c) 2018 Erik Rigtorp <erik@rigtorp.se>
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -82,14 +81,16 @@ int main(int argc, char *argv[]) {
 
   {
     VarSizedSPSCQueue q{};
+
     auto t = std::thread([&] {
       pinThread(cpu1);
       for (int i = 0; i < iters; ++i) {
         while (!q.front())
           ;
-        if (readInt(q.front()) != i) {
-          printf("readInt:%d, i:%d", readInt(q.front()), i);
-          //throw std::runtime_error("not equal");
+        auto val = readInt(q.front());
+        if (val != i) [[unlikely]] {
+          printf("readInt:%d, i:%d, read:%d, write:%d\n", val, i, q.m_read_idx.load(), q.m_write_idx);
+          throw std::runtime_error("not equal");
         }
         q.pop();
       }

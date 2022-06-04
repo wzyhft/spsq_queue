@@ -25,16 +25,20 @@ public:
 
     MsgHeader* alloc(size_t size) {
         size += MSG_HEADER_SIZE;
+        if (size > m_free_size) {
+            
+        }
         uint64_t read_idx_cache = m_read_idx.load(std::memory_order_relaxed);
         // ^ should I do it with volatile?
+        // need to be >= because at the beginning, all idx start at 0
         if(m_write_idx >= read_idx_cache) {
             size_t free_size = q_size - m_write_idx;
             if(free_size < size) {
                 //wrap around
                 // set header.size to 1 so reader knows to rewind
                 reinterpret_cast<MsgHeader*>(&buf[m_write_idx])->size = 1;
-                m_write_idx.store(0, std::memory_order_relaxed);
-                reinterpret_cast<MsgHeader*>(&buf[m_write_idx])->size = 0;
+                //m_write_idx.store(0, std::memory_order_relaxed);
+                m_write_idx = 0;
                 free_size = read_idx_cache - m_write_idx;
                 if(free_size < size) {
                     return nullptr;
@@ -58,7 +62,8 @@ public:
 
     void push() {
         auto* header = reinterpret_cast<MsgHeader*>(&buf[m_write_idx]);
-        m_write_idx.store(m_write_idx + header->size, std::memory_order_relaxed);
+        m_write_idx = m_write_idx + header->size;
+        //m_write_idx.store(m_write_idx + header->size, std::memory_order_relaxed);
     }
 
     const MsgHeader* front() {
@@ -79,13 +84,16 @@ public:
 
     
     
-private:
+//private:
     static constexpr uint32_t CNT = 16 * 1024;
     static constexpr uint32_t q_size = MSG_HEADER_SIZE * CNT;
     alignas(64) char buf[q_size] = {};
 
-    alignas(128) std::atomic<uint64_t> m_write_idx {0};
-    alignas(128) std::atomic<uint64_t> m_read_idx {0};
+    //std::atomic<uint32_t> m_write_idx {0};
+    uint32_t m_write_idx {0};
+    uint32_t m_free_size = q_size;
+    alignas(128) char cacheline_padding[128];
+    alignas(128) std::atomic<uint32_t> m_read_idx {0};
 
 };
 }
