@@ -25,13 +25,21 @@ public:
 
     MsgHeader* alloc(size_t size) {
         size += MSG_HEADER_SIZE;
+        /*
         if (size > m_free_size) {
-            
+            uint32_t read_idx_cache = m_read_idx.load(std::memory_order_relaxed);
+            // rewind m_write_idx
+            if(m_write_idx > read_idx_cache) {
+
+
+            }
         }
+        */
         uint64_t read_idx_cache = m_read_idx.load(std::memory_order_relaxed);
         // ^ should I do it with volatile?
         // need to be >= because at the beginning, all idx start at 0
-        if(m_write_idx >= read_idx_cache) {
+        if(m_write_idx > read_idx_cache || first) {
+            first = false;
             size_t free_size = q_size - m_write_idx;
             if(free_size < size) {
                 //wrap around
@@ -39,6 +47,7 @@ public:
                 reinterpret_cast<MsgHeader*>(&buf[m_write_idx])->size = 1;
                 //m_write_idx.store(0, std::memory_order_relaxed);
                 m_write_idx = 0;
+                write_c += 1;
                 free_size = read_idx_cache - m_write_idx;
                 if(free_size < size) {
                     return nullptr;
@@ -71,6 +80,7 @@ public:
         //rewind
         if (header->size == 1) {
             m_read_idx = 0;
+            read_c += 1;
             header = reinterpret_cast<MsgHeader*>(&buf[m_read_idx]);
         }
         if (header->size == 0) return nullptr;
@@ -85,14 +95,15 @@ public:
     
     
 //private:
+uint32_t read_c;
+uint32_t write_c;
+    bool first = true;
     static constexpr uint32_t CNT = 16 * 1024;
-    static constexpr uint32_t q_size = MSG_HEADER_SIZE * CNT;
+    static constexpr uint32_t q_size = MSG_HEADER_SIZE * CNT ;
     alignas(64) char buf[q_size] = {};
 
     //std::atomic<uint32_t> m_write_idx {0};
     uint32_t m_write_idx {0};
-    uint32_t m_free_size = q_size;
-    alignas(128) char cacheline_padding[128];
     alignas(128) std::atomic<uint32_t> m_read_idx {0};
 
 };
