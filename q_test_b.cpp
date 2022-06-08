@@ -21,8 +21,8 @@ SOFTWARE.
 #include <iostream>
 #include <cstring>
 #include <stdlib.h>
-#include "VarSizedSPSCQueue2.h"
-//#include "spsc_q_b.h"
+#include "VarSizedSPSCQueue.h"
+#include "spsc_q_b.h"
 #include <thread>
 
 
@@ -53,7 +53,7 @@ void pinThread(int cpu) {
 }
 
 using namespace dao::lockfree_container;
-int readInt(const VarSizedSPSCQueue::MsgHeader* msg_head) {
+int readInt(const SPSCVarQueueOPT<131072>::MsgHeader* msg_head) {
     char* data = (char*)(msg_head + 1);
     return *(int*)(data);
     /*
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
   std::cout << "VarSizedSPSCQueue:" << std::endl;
 
   {
-    VarSizedSPSCQueue q{};
+    SPSCVarQueueOPT<131072> q{};
 
     auto t = std::thread([&] {
       pinThread(cpu1);
@@ -95,8 +95,8 @@ int main(int argc, char *argv[]) {
           ;
         auto val = readInt(q.front());
         if (val != i) [[unlikely]] {
-          printf("readInt:%d, i:%d, read_c:%d, read_i:%d, write_c:%d, write_i:%d\n", val, i, q.read_c, q.m_read_idx.load(), q.write_c, q.m_write_idx);
-          //throw std::runtime_error("not equal");
+          //printf("readInt:%d, i:%d, read:%d, write:%d\n", val, i, q.read_idx, q.write_idx);
+          throw std::runtime_error("not equal");
         }
         q.pop();
       }
