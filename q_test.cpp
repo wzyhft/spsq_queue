@@ -95,6 +95,7 @@ int main(int argc, char *argv[]) {
           ;
         auto val = readInt(q.front());
         if (val != i) [[unlikely]] {
+          //printf("readInt:%d, i:%d, read_c:%d, read_i:%d, write_c:%d, write_i:%d\n", val, i, q.read_c, q.m_read_idx, q.write_c, q.m_write_idx);
           printf("readInt:%d, i:%d, read_c:%d, read_i:%d, write_c:%d, write_i:%d\n", val, i, q.read_c, q.m_read_idx.load(), q.write_c, q.m_write_idx);
           //throw std::runtime_error("not equal");
         }
