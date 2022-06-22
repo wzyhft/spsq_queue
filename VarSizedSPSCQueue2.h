@@ -33,7 +33,7 @@ public:
                 if (m_free_size <= m_curt_write_size && read_idx_cache != 0) {  // why
                     // every time we set next header to 0 first like what we do in push()
                     reinterpret_cast<MsgHeader*>(&buf[0])->size = 0;
-                    std::atomic_thread_fence(std::memory_order_seq_cst);
+                    std::atomic_thread_fence(std::memory_order_relaxed);
 
                     reinterpret_cast<MsgHeader*>(&buf[m_write_idx])->size = 1;
                     // avoid m_write_idx update before flag the wrap around
@@ -58,8 +58,7 @@ public:
     // old values without a sign to stop.
     void push() {
         reinterpret_cast<MsgHeader*>(&buf[m_write_idx + m_curt_write_size])->size = 0;
-        std::atomic_thread_fence(std::memory_order_seq_cst);
-        // std::atomic_thread_fence(std::memory_order_release);
+        std::atomic_thread_fence(std::memory_order_relaxed);  
 
         reinterpret_cast<MsgHeader*>(&buf[m_write_idx])->size = m_curt_write_size;
         m_write_idx += m_curt_write_size;
@@ -80,7 +79,7 @@ public:
 
     void pop() {
         auto* header = reinterpret_cast<MsgHeader*>(&buf[m_read_idx]);
-        m_read_idx.store(m_read_idx + header->size, std::memory_order_seq_cst);
+        m_read_idx.store(m_read_idx + header->size, std::memory_order_relaxed);
     }
 
     
